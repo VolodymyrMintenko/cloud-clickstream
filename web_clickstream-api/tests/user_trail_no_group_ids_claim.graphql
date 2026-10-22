@@ -1,0 +1,26 @@
+# FR-auth bug fix: USER1's token here carries sub and global_admin: false but
+# omits the data_group_ids claim entirely (see user_trail_no_group_ids_claim.properties)
+# — the shape Auth0 issues for a user who belongs to no organization. Before the
+# fix this still worked here because callerGroupIds was already nullable, but the
+# access filter must treat the missing list as empty rather than erroring in
+# ARRAY_CONTAINS, falling through to the "or own sub" branch. userId is omitted
+# (self lookup) and the window matches user_trail.graphql (UserTrailUser1): expect
+# the identical USER1 trail, proving the caller still sees their own rows with no
+# group membership at all, and nothing beyond it.
+query UserTrailNoGroupIdsClaim {
+  UserTrail(
+    fromTime: "2026-09-23T00:00:00Z"
+    toTime: "2026-09-24T00:00:00Z"
+    limit: 100
+  ) {
+    sessionId
+    routePattern
+    path
+    orgName
+    projectId
+    deploymentId
+    tab
+    referrerPath
+    eventTime
+  }
+}

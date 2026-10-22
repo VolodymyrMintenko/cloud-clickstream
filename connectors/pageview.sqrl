@@ -1,0 +1,22 @@
+/**
+  A single `page_view` event emitted by the DataSQRL Cloud web app whenever a
+  user navigates to a page. Carries only opaque ids and route metadata (no PII):
+  `user_id`, `org_id` and `is_global_admin` are set server-side and cannot be
+  forged by a client. The `event_time` (Kafka metadata timestamp in production,
+  a physical file column in test) is NOT part of this payload schema — it is
+  declared on each per-environment connector table together with its watermark.
+ */
+CREATE TABLE _PageView_schema (
+    event_id STRING NOT NULL,
+    session_id STRING NOT NULL,
+    user_id STRING NOT NULL,
+    is_global_admin BOOLEAN NOT NULL,
+    org_id STRING,
+    org_name STRING,
+    route_pattern STRING NOT NULL,
+    path STRING NOT NULL,
+    project_id STRING,
+    deployment_id STRING,
+    tab STRING,
+    referrer_path STRING
+);

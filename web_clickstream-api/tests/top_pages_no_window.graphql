@@ -1,0 +1,13 @@
+# TopPages with no window: omitting fromTime and toTime applies neither bound, so
+# every retained event is ranked (30-day retention is the effective span). The
+# fixture lies entirely within retention and within the exclude-admins window, so
+# this returns the same ranking as top_pages_exclude_admins — admins are still
+# excluded by default when no window is given.
+query TopPagesNoWindow {
+  TopPages {
+    routePattern
+    viewCount
+    uniqueUsers
+    uniqueSessions
+  }
+}

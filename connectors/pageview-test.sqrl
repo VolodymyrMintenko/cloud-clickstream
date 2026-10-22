@@ -1,0 +1,19 @@
+-- Test ingestion: a filesystem stand-in for the production Kafka mutation, over
+-- a static JSONL fixture. Same table name `PageView` as prod/local so the main
+-- script is environment-agnostic. Production takes `event_time` from Kafka
+-- metadata; here it is a PHYSICAL column present in every fixture record, with
+-- the same 60-second watermark, so sessionization/dwell/day-bucket logic is
+-- deterministic (wall-clock ingest time would not be). `no_query` mirrors prod.
+IMPORT pageview.*;
+
+/*+no_query */
+CREATE TABLE PageView (
+    event_time TIMESTAMP_LTZ(3) NOT NULL,
+    WATERMARK FOR event_time AS event_time - INTERVAL '60' SECOND
+) WITH (
+    'connector' = 'filesystem',
+    'path' = '${DATA_PATH}/page_view.jsonl',
+    'source.monitor-interval' = '10 sec',
+    'format' = 'json',
+    'json.timestamp-format.standard' = 'ISO-8601'
+) LIKE _PageView_schema;

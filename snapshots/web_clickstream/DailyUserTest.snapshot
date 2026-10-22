@@ -1,0 +1,20 @@
+{
+  "data" : {
+    "DailyUserTest" : [ {
+      "user_day" : "2026-08-15T00:00:00.000Z",
+      "user_id" : "auth0|USER3"
+    }, {
+      "user_day" : "2026-09-20T00:00:00.000Z",
+      "user_id" : "auth0|USER1"
+    }, {
+      "user_day" : "2026-09-23T00:00:00.000Z",
+      "user_id" : "auth0|ADMIN"
+    }, {
+      "user_day" : "2026-09-23T00:00:00.000Z",
+      "user_id" : "auth0|USER1"
+    }, {
+      "user_day" : "2026-09-23T00:00:00.000Z",
+      "user_id" : "auth0|USER2"
+    } ]
+  }
+}

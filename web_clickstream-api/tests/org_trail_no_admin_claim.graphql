@@ -1,0 +1,28 @@
+# FR-auth bug fix: USER1's token here carries sub and data_group_ids [ORG-ACME]
+# but omits the global_admin claim entirely (see org_trail_no_admin_claim.properties)
+# — the shape Auth0 actually issues for a non-admin user, who never gets that
+# claim at all. Before the fix, callerIsAdmin was declared NOT NULL so the server
+# rejected the whole call with 403 ("Required claim ... is not present"). The
+# query itself is identical to org_trail.graphql (OrgTrailAcme): same orgName and
+# window. Expect the same acme rows as that snapshot — a missing claim must read
+# as "not an admin" and the ordinary acme-member scoping applies, not an outright
+# failure.
+query OrgTrailNoAdminClaim {
+  OrgTrail(
+    orgName: "acme"
+    fromTime: "2026-09-23T00:00:00Z"
+    toTime: "2026-09-24T00:00:00Z"
+    limit: 100
+  ) {
+    userId
+    sessionId
+    routePattern
+    path
+    orgName
+    projectId
+    deploymentId
+    tab
+    referrerPath
+    eventTime
+  }
+}

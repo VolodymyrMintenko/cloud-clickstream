@@ -1,0 +1,21 @@
+{
+  "version": "1",
+  "enabled-engines": ["flink", "postgres", "kafka", "vertx"],
+  "script": {
+    "main": "web_clickstream.sqrl"
+  },
+  "engines": {
+    "flink": {
+      "config": {
+        "execution.runtime-mode": "STREAMING",
+        "table.local-time-zone": "UTC",
+        "table.exec.source.idle-timeout": "1 s"
+      }
+    }
+  },
+  "compiler": {
+    "api": {
+      "protocols": ["GRAPHQL", "REST", "MCP"]
+    }
+  }
+}

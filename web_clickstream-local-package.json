@@ -1,0 +1,37 @@
+{
+  "script": {
+    "config": {
+      "environment": "local"
+    }
+  },
+  "engines": {
+    "vertx": {
+      "authKind": ["JWT"],
+      "config": {
+        "jwtAuth": {
+          "pubSecKeys": [
+            {
+              "algorithm": "HS256",
+              "buffer": "ZHVtbXktc3VwZXItc2VjcmV0LWp3dC1zaWduaW5nLXN0cmluZw=="
+            }
+          ],
+          "jwtOptions": {
+            "issuer": "dummy-issuer",
+            "audience": ["dummy-audience"],
+            "expiresInSeconds": "3600",
+            "leeway": "60"
+          }
+        }
+      }
+    }
+  },
+  "test-runner": {
+    "snapshot-folder": "snapshots/web_clickstream_local/",
+    "test-folder": "web_clickstream-api/tests-write/",
+    "delay-sec": 30,
+    "mutation-delay-sec": 1,
+    "headers": {
+      "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOlsiZHVtbXktYXVkaWVuY2UiXSwiY3VzdG9tZXJJZCI6OSwiZXhwIjo5OTk5OTk5OTk5LCJpYXQiOjE3NzAwOTgzNDcsImlzcyI6ImR1bW15LWlzc3VlciIsInJvbGVzIjpbInVzZXIiXX0.317UGknkS-dke26iQs3H6_Oj2WsoKO78H300hRsePrc"
+    }
+  }
+}

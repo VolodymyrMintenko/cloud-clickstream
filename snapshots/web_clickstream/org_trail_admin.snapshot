@@ -1,0 +1,27 @@
+{
+  "data" : {
+    "OrgTrail" : [ {
+      "userId" : "auth0|USER3",
+      "sessionId" : "SESS-8",
+      "routePattern" : "/[orgName]/[projectId]",
+      "path" : "/contoso/PZ",
+      "orgName" : "contoso",
+      "projectId" : "PZ",
+      "deploymentId" : null,
+      "tab" : null,
+      "referrerPath" : null,
+      "eventTime" : "2026-08-15T09:00:00.000Z"
+    }, {
+      "userId" : "auth0|USER3",
+      "sessionId" : "SESS-8",
+      "routePattern" : "/[orgName]/[projectId]/~/settings",
+      "path" : "/contoso/PZ/~/settings",
+      "orgName" : "contoso",
+      "projectId" : "PZ",
+      "deploymentId" : null,
+      "tab" : null,
+      "referrerPath" : "/contoso/PZ",
+      "eventTime" : "2026-08-15T09:01:00.000Z"
+    } ]
+  }
+}

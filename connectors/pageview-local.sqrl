@@ -1,0 +1,11 @@
+-- Local ingestion: identical to production — a DataSQRL-managed Kafka topic
+-- exposed as the `PageView` mutation. Used to exercise the write path (FR-1/FR-2)
+-- against a Kafka-backed environment locally. `event_time` is the Kafka metadata
+-- timestamp with a 60-second lateness watermark, matching prod exactly.
+IMPORT pageview.*;
+
+/*+no_query, engine(kafka) */
+CREATE TABLE PageView (
+    event_time TIMESTAMP_LTZ(3) NOT NULL METADATA FROM 'timestamp',
+    WATERMARK FOR event_time AS event_time - INTERVAL '60' SECOND
+) LIKE _PageView_schema;

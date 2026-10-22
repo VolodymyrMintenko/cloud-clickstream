@@ -1,0 +1,16 @@
+# FR-2 (write path): an event missing a required field (session_id) is rejected
+# by the API and never enters the stream. session_id is non-null in PageViewInput,
+# so the server returns a validation error rather than accepting the event.
+mutation AddInvalidPageView {
+  PageView(event: {
+    event_id: "W2"
+    user_id: "auth0|WUSER"
+    is_global_admin: false
+    org_id: "ORG-WONKA"
+    org_name: "wonka"
+    route_pattern: "/[orgName]/[projectId]"
+    path: "/wonka/WP2"
+  }) {
+    event_id
+  }
+}

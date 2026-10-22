@@ -1,0 +1,18 @@
+# FR-4: SESS-3's two events are 45 minutes apart, so the gap starts a new run:
+# both are sequence 1 and both have null dwellSeconds (no next event within 30 min).
+query SessionJourneyS3 {
+  SessionJourney(sessionId: "SESS-3") {
+    sequence
+    userId
+    orgName
+    sessionId
+    routePattern
+    path
+    projectId
+    deploymentId
+    tab
+    referrerPath
+    eventTime
+    dwellSeconds
+  }
+}

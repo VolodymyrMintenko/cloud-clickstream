@@ -1,0 +1,23 @@
+# Calls UserTrail with userId omitted entirely, using USER1's own token (see
+# user_trail_no_userid.properties, the same token used by org_trail.properties):
+# this is the "assistant doesn't know the caller's id" scenario from the request.
+# Expect the same rows as UserTrailUser1 (user_trail.graphql), which pins USER1's
+# trail with an explicit userId over the identical window — proving the COALESCE
+# to the caller's sub claim reproduces exactly the caller's own trail.
+query UserTrailSelf {
+  UserTrail(
+    fromTime: "2026-09-23T00:00:00Z"
+    toTime: "2026-09-24T00:00:00Z"
+    limit: 100
+  ) {
+    sessionId
+    routePattern
+    path
+    orgName
+    projectId
+    deploymentId
+    tab
+    referrerPath
+    eventTime
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "errors" : [ {
+    "message" : "Validation error (WrongType@[PageView]) : argument 'event' with value 'ObjectValue{objectFields=[ObjectField{name='event_id', value=StringValue{value='W2'}}, ObjectField{name='user_id', value=StringValue{value='auth0|WUSER'}}, ObjectField{name='is_global_admin', value=BooleanValue{value=false}}, ObjectField{name='org_id', value=StringValue{value='ORG-WONKA'}}, ObjectField{name='org_name', value=StringValue{value='wonka'}}, ObjectField{name='route_pattern', value=StringValue{value='/[orgName]/[projectId]'}}, ObjectField{name='path', value=StringValue{value='/wonka/WP2'}}]}' is missing required fields '[session_id]'",
+    "locations" : [ {
+      "line" : 2,
+      "column" : 12
+    } ],
+    "extensions" : {
+      "classification" : "ValidationError"
+    }
+  } ]
+}

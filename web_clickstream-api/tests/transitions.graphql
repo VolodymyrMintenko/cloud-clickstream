@@ -1,0 +1,14 @@
+# FR-8: from /[orgName]/[projectId]/~/deployments the session transitions to
+# /[orgName]/[projectId]/[deploymentId]/~/logs (R2->R3, count 1) and to
+# /[orgName]/[projectId]/~/analytics (R6->R7, count 1).
+# FR-4: the R12->R13 pair in SESS-3 straddles a 45-minute gap and is NOT counted.
+query PageTransitionsDeployments {
+  PageTransitions(
+    fromRoutePattern: "/[orgName]/[projectId]/~/deployments"
+    fromTime: "2026-09-01T00:00:00Z"
+    toTime: "2026-10-01T00:00:00Z"
+  ) {
+    toRoutePattern
+    transitionCount
+  }
+}

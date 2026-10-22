@@ -1,0 +1,27 @@
+# FR-auth, "member of one organization": called with USER1's own token (sub
+# auth0|USER1, data_group_ids [ORG-ACME], not a global admin, see org_trail.properties).
+# A caller who belongs to acme sees every acme page view on 2026-09-23, across both
+# users, ordered by event time: USER1's SESS-1, then USER2's SESS-2, then USER1's
+# SESS-3, then USER2's SESS-6. userId on each row shows who moved where. SESS-7
+# (org null) and the admin/globex events are not part of acme and are absent. The
+# rows are identical to what the orgName filter alone used to return, because the
+# caller is in fact a member of the org they asked for.
+query OrgTrailAcme {
+  OrgTrail(
+    orgName: "acme"
+    fromTime: "2026-09-23T00:00:00Z"
+    toTime: "2026-09-24T00:00:00Z"
+    limit: 100
+  ) {
+    userId
+    sessionId
+    routePattern
+    path
+    orgName
+    projectId
+    deploymentId
+    tab
+    referrerPath
+    eventTime
+  }
+}

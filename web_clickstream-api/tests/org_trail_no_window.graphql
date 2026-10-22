@@ -1,0 +1,21 @@
+# Uses the suite's default token (a global admin, see web_clickstream-test-package.json),
+# so the auth filter is a no-op here and the plain orgName filter is exercised as before.
+# OrgTrail with no window: omitting fromTime and toTime applies neither bound, so
+# every retained acme event is returned (30-day retention is the effective span).
+# This is the windowed org_trail case plus E17 (SESS-0, 2026-09-20), which sits
+# before that test's fromTime; here there is no lower bound so it leads the trail.
+# SESS-7 (org null) and the admin/globex events still belong to no acme org and stay absent.
+query OrgTrailAcmeNoWindow {
+  OrgTrail(orgName: "acme", limit: 100) {
+    userId
+    sessionId
+    routePattern
+    path
+    orgName
+    projectId
+    deploymentId
+    tab
+    referrerPath
+    eventTime
+  }
+}

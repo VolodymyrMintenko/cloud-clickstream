@@ -1,0 +1,19 @@
+# Uses the suite's default token (a global admin, see web_clickstream-test-package.json),
+# so the auth filter is a no-op here and the plain userId filter is exercised as before.
+# FR-6: for U2 over the SESS-2 timeframe, TopProjectsByUser returns PA first
+# (viewCount 5, sessionCount 1, lastViewedAt = latest of the five = 11:07:00Z),
+# then PB (viewCount 2). The window ends before U2's later PA view (R18, 14:05Z),
+# which belongs to a different session and would otherwise make it a 6th PA view.
+query TopProjectsByUserU2 {
+  TopProjectsByUser(
+    userId: "auth0|USER2"
+    fromTime: "2026-09-23T11:00:00Z"
+    toTime: "2026-09-23T12:00:00Z"
+  ) {
+    projectId
+    orgName
+    viewCount
+    sessionCount
+    lastViewedAt
+  }
+}

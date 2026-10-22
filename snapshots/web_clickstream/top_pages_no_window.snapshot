@@ -1,0 +1,50 @@
+{
+  "data" : {
+    "TopPages" : [ {
+      "routePattern" : "/[orgName]/[projectId]",
+      "viewCount" : 4,
+      "uniqueUsers" : 3,
+      "uniqueSessions" : 3
+    }, {
+      "routePattern" : "/[orgName]/[projectId]/~/deployments",
+      "viewCount" : 4,
+      "uniqueUsers" : 2,
+      "uniqueSessions" : 3
+    }, {
+      "routePattern" : "/[orgName]/[projectId]/[deploymentId]/~/logs",
+      "viewCount" : 3,
+      "uniqueUsers" : 2,
+      "uniqueSessions" : 3
+    }, {
+      "routePattern" : "/[orgName]",
+      "viewCount" : 1,
+      "uniqueUsers" : 1,
+      "uniqueSessions" : 1
+    }, {
+      "routePattern" : "/[orgName]/[projectId]/[deploymentId]/~/config",
+      "viewCount" : 1,
+      "uniqueUsers" : 1,
+      "uniqueSessions" : 1
+    }, {
+      "routePattern" : "/[orgName]/[projectId]/~/analytics",
+      "viewCount" : 1,
+      "uniqueUsers" : 1,
+      "uniqueSessions" : 1
+    }, {
+      "routePattern" : "/[orgName]/[projectId]/~/logs",
+      "viewCount" : 1,
+      "uniqueUsers" : 1,
+      "uniqueSessions" : 1
+    }, {
+      "routePattern" : "/[orgName]/[projectId]/~/settings",
+      "viewCount" : 1,
+      "uniqueUsers" : 1,
+      "uniqueSessions" : 1
+    }, {
+      "routePattern" : "/docs",
+      "viewCount" : 1,
+      "uniqueUsers" : 1,
+      "uniqueSessions" : 1
+    } ]
+  }
+}

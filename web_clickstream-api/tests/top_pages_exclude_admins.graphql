@@ -1,0 +1,14 @@
+# FR-7/FR-11 (default): admin (is_global_admin) events are excluded. The route
+# /[orgName]/[projectId]/~/logs is hit by admin U3 (R15, R16) and non-admin U2
+# (R18); excluding admins it shows viewCount 1.
+query TopPagesExcludeAdmins {
+  TopPages(
+    fromTime: "2026-09-01T00:00:00Z"
+    toTime: "2026-10-01T00:00:00Z"
+  ) {
+    routePattern
+    viewCount
+    uniqueUsers
+    uniqueSessions
+  }
+}

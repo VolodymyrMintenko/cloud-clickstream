@@ -1,0 +1,23 @@
+# FR-auth, "SessionJourney no longer hands out another person's trail": SESS-8
+# belongs to USER3 at contoso (ORG-CONTOSO). Called with USER1's own token (sub
+# auth0|USER1, data_group_ids [ORG-ACME], not a global admin, see
+# session_journey_denied.properties): USER1 is neither a contoso member nor the
+# author of SESS-8's events, so the session id alone no longer reaches it and the
+# result is empty, proving the scoping actually blocks access (the session has
+# real data, see session_journey_s4-equivalent rows E20/E21 in the fixture).
+query SessionJourneyDeniedForOutsider {
+  SessionJourney(sessionId: "SESS-8") {
+    sequence
+    userId
+    orgName
+    sessionId
+    routePattern
+    path
+    projectId
+    deploymentId
+    tab
+    referrerPath
+    eventTime
+    dwellSeconds
+  }
+}

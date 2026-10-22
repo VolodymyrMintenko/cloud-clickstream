@@ -1,0 +1,335 @@
+/* ============================================================================
+   DataSQRL Cloud Web App — Clickstream Analytics
+
+   Ingests `page_view` events through the `PageView` GraphQL mutation (a
+   DataSQRL-managed Kafka topic in prod/local, a filesystem fixture in test),
+   deduplicates them on `event_id`, and serves analytics query functions.
+
+   Event time is the Kafka metadata timestamp (ingest time), reconstructed as a
+   physical column in the test fixture. All time bucketing is UTC (the Flink
+   session time zone is pinned to UTC in configuration). 30-day retention is
+   enforced per-table with `ttl` — raw events are kept for the whole query
+   horizon so window aggregates are computed exactly over them, not approximated.
+   ============================================================================ */
+
+-- Environment-selected ingestion. Wildcard import runs the connector inline so
+-- the prod/local Kafka `PageView` table is exposed as the write mutation.
+IMPORT connectors.pageview-{{environment}}.*;
+
+/* ========================================
+   Deduplication & raw base
+   ======================================== */
+
+-- Keep the earliest arrival per event_id (at-least-once delivery, FR-3): order
+-- ASC so a re-delivered event_id cannot displace the first one seen.
+/*+ttl(30 days) */
+_PageViewDedup := DISTINCT PageView ON event_id ORDER BY event_time ASC;
+
+-- The immutable raw event with a UTC calendar-day bucket and an epoch-seconds
+-- column. event_epoch is computed here in Flink (TIMESTAMPDIFF is unsupported in
+-- the Postgres serving dialect), so the served window queries below do all their
+-- 30-minute-gap and dwell math as plain integer arithmetic (1800 s = 30 min).
+-- Every served query reads this table; it is the only raw base retained.
+/*+ttl(30 days) */
+_PageViewClean := SELECT *,
+    CAST(FLOOR(event_time TO DAY) AS TIMESTAMP_LTZ(3)) AS event_day,
+    TIMESTAMPDIFF(SECOND, TO_TIMESTAMP_LTZ(0), event_time) AS event_epoch
+  FROM _PageViewDedup;
+
+-- Distinct (day, user, org) presence set feeding DAU/WAU. A 1-day TUMBLE over the
+-- event-time attribute carries window_time forward as this table's own event
+-- timestamp (day_time), which a plain GROUP BY on the computed event_day column
+-- could not: the 30-day ttl now has a recognized column to age rows by, so the
+-- table stays bounded and the trailing-7-day self-join in ActiveUsers reads a
+-- bounded set. window_start is the UTC day bucket — identical to the previous
+-- FLOOR(event_time TO DAY) value under the pinned UTC session zone — so user_day
+-- and hence DAU/WAU are unchanged. org_id is carried as an extra grouping key
+-- (not folded away) so ActiveUsers can apply the same caller org scoping as the
+-- other query functions; a user active in more than one org (or also outside any
+-- org) on a day yields one row per org here, collapsed back by the DISTINCT in
+-- ActiveUsers and in PageViewDedupTest's sibling, DailyUserTest.
+/*+primary_key(user_day, user_id, org_id), ttl(30 days) */
+_DailyUser := SELECT window_start AS user_day, user_id, org_id, window_time AS day_time
+  FROM TABLE(TUMBLE(TABLE _PageViewClean, DESCRIPTOR(event_time), INTERVAL '1' DAY))
+  GROUP BY window_start, window_end, window_time, user_id, org_id;
+
+/* ========================================
+   API — analytics query functions
+   Result columns are aliased to the exact camelCase contract names.
+   Time bounds are half-open [fromTime, toTime).
+   ======================================== */
+
+/** Top projects viewed by a user in a time window, most-viewed first.
+    Returns projectId, orgName, viewCount, sessionCount and lastViewedAt.
+    Scoped to the caller's own token (FR-auth): a global admin sees every row; everyone
+    else only sees rows whose org_id is one of their data_group_ids, or whose user_id is
+    their own sub. userId narrows a result the caller is already allowed to see — it can
+    no longer be used to read someone else's trail outside the caller's own organizations.
+    Arguments:
+      userId   — optional; the user (auth0 id) whose project views are ranked. Omit it to
+                 get the caller's own rows (their sub claim) — this is what a caller asking
+                 about themselves should do, since they have no way of knowing their own id.
+      fromTime — optional inclusive start of the time window; omit for no lower bound
+                 (all retained history, 30 days). Half-open [fromTime, toTime) when given.
+      toTime   — optional exclusive end of the time window; omit for no upper bound. */
+TopProjectsByUser(userId STRING, fromTime TIMESTAMP, toTime TIMESTAMP,
+    callerSub STRING NOT NULL METADATA FROM 'auth.sub',
+    callerGroupIds ARRAY<STRING> METADATA FROM 'auth.https://datasqrl.com/data_group_ids',
+    callerIsAdmin BOOLEAN METADATA FROM 'auth.https://datasqrl.com/global_admin') :=
+  SELECT project_id AS projectId,
+         org_name AS orgName,
+         COUNT(*) AS viewCount,
+         COUNT(DISTINCT session_id) AS sessionCount,
+         MAX(event_time) AS lastViewedAt
+  FROM _PageViewClean
+  WHERE user_id = COALESCE(:userId, CAST(:callerSub AS STRING))
+    AND project_id IS NOT NULL
+    AND (COALESCE(CAST(:callerIsAdmin AS BOOLEAN), FALSE) = TRUE OR ARRAY_CONTAINS(CAST(:callerGroupIds AS ARRAY<STRING>), org_id) OR user_id = CAST(:callerSub AS STRING))
+    AND (CAST(:fromTime AS TIMESTAMP_LTZ(3)) IS NULL OR event_time >= CAST(:fromTime AS TIMESTAMP_LTZ(3)))
+    AND (CAST(:toTime AS TIMESTAMP_LTZ(3)) IS NULL OR event_time < CAST(:toTime AS TIMESTAMP_LTZ(3)))
+  GROUP BY project_id, org_name
+  ORDER BY viewCount DESC, projectId ASC;
+
+/** Top pages by route pattern in a time window, most-viewed first, with exact
+    unique user and session counts. Admin (DataSQRL staff) events are excluded
+    unless includeAdmins is true (defaults to false).
+    Scoped to the caller's own token (FR-auth): a global admin sees every row; everyone
+    else only sees rows whose org_id is one of their data_group_ids, or whose user_id is
+    their own sub, so the counts are computed over the caller's own organizations rather
+    than platform-wide.
+    Arguments:
+      fromTime      — optional inclusive start of the time window; omit for no lower bound
+                      (all retained history, 30 days). Half-open [fromTime, toTime) when given.
+      toTime        — optional exclusive end of the time window; omit for no upper bound.
+      includeAdmins — when true, include events from global-admin (DataSQRL staff)
+                      users; when false or omitted they are excluded. Defaults to false. */
+TopPages(fromTime TIMESTAMP, toTime TIMESTAMP, includeAdmins BOOLEAN,
+    callerSub STRING NOT NULL METADATA FROM 'auth.sub',
+    callerGroupIds ARRAY<STRING> METADATA FROM 'auth.https://datasqrl.com/data_group_ids',
+    callerIsAdmin BOOLEAN METADATA FROM 'auth.https://datasqrl.com/global_admin') :=
+  SELECT route_pattern AS routePattern,
+         COUNT(*) AS viewCount,
+         COUNT(DISTINCT user_id) AS uniqueUsers,
+         COUNT(DISTINCT session_id) AS uniqueSessions
+  FROM _PageViewClean
+  WHERE (CAST(:fromTime AS TIMESTAMP_LTZ(3)) IS NULL OR event_time >= CAST(:fromTime AS TIMESTAMP_LTZ(3)))
+    AND (CAST(:toTime AS TIMESTAMP_LTZ(3)) IS NULL OR event_time < CAST(:toTime AS TIMESTAMP_LTZ(3)))
+    AND (is_global_admin = FALSE OR COALESCE(:includeAdmins, FALSE) = TRUE)
+    AND (COALESCE(CAST(:callerIsAdmin AS BOOLEAN), FALSE) = TRUE OR ARRAY_CONTAINS(CAST(:callerGroupIds AS ARRAY<STRING>), org_id) OR user_id = CAST(:callerSub AS STRING))
+  GROUP BY route_pattern
+  ORDER BY viewCount DESC, routePattern ASC;
+
+/** Page-to-page transitions out of a given route pattern within a window,
+    counting only consecutive events inside one session (a gap over 30 minutes
+    ends the session and yields no pair). Most-frequent target first.
+    Scoped to the caller's own token (FR-auth): a global admin sees every row; everyone
+    else only sees rows whose org_id is one of their data_group_ids, or whose user_id is
+    their own sub, so the counts are computed over the caller's own organizations rather
+    than platform-wide. The scope is applied before the LAG pairing, so a session outside
+    the caller's reach contributes no transitions at all.
+    Arguments:
+      fromRoutePattern — the source route pattern; only transitions leaving this
+                         pattern are counted.
+      fromTime         — optional inclusive start of the time window; omit for no lower bound
+                         (all retained history, 30 days). Half-open [fromTime, toTime) when given.
+      toTime           — optional exclusive end of the time window; omit for no upper bound. */
+PageTransitions(fromRoutePattern STRING NOT NULL, fromTime TIMESTAMP, toTime TIMESTAMP,
+    callerSub STRING NOT NULL METADATA FROM 'auth.sub',
+    callerGroupIds ARRAY<STRING> METADATA FROM 'auth.https://datasqrl.com/data_group_ids',
+    callerIsAdmin BOOLEAN METADATA FROM 'auth.https://datasqrl.com/global_admin') :=
+  SELECT toRoutePattern, COUNT(*) AS transitionCount
+  FROM (
+    SELECT route_pattern AS toRoutePattern,
+           event_time,
+           event_epoch,
+           LAG(route_pattern) OVER (PARTITION BY session_id ORDER BY event_time) AS from_route_pattern,
+           LAG(event_epoch) OVER (PARTITION BY session_id ORDER BY event_time) AS prev_epoch
+    FROM _PageViewClean
+    WHERE (COALESCE(CAST(:callerIsAdmin AS BOOLEAN), FALSE) = TRUE OR ARRAY_CONTAINS(CAST(:callerGroupIds AS ARRAY<STRING>), org_id) OR user_id = CAST(:callerSub AS STRING))
+  ) t
+  WHERE t.from_route_pattern = :fromRoutePattern
+    AND t.event_epoch - t.prev_epoch <= 1800
+    AND (CAST(:fromTime AS TIMESTAMP_LTZ(3)) IS NULL OR t.event_time >= CAST(:fromTime AS TIMESTAMP_LTZ(3)))
+    AND (CAST(:toTime AS TIMESTAMP_LTZ(3)) IS NULL OR t.event_time < CAST(:toTime AS TIMESTAMP_LTZ(3)))
+  GROUP BY toRoutePattern
+  ORDER BY transitionCount DESC, toRoutePattern ASC;
+
+/** A single session's journey, ordered by event time. Sessionization (30-minute
+    inactivity split), 1-based sequence and dwell time are computed here at query
+    time. dwellSeconds is the seconds to the next event in the session, null on
+    the last event of a run (next event absent or more than 30 minutes away).
+    referrerPath is the previous in-app path as the browser recorded it within the
+    same tab, null on the first view of a visit; unlike the row above it, it stays
+    correct when a user browses several tabs at once and the rows interleave by time.
+    userId, orgName and sessionId identify whose session this is; they are constant
+    across the returned rows (orgName is null for pages outside any organization).
+    Scoped to the caller's own token (FR-auth): a global admin sees every row; everyone
+    else only sees rows whose org_id is one of their data_group_ids, or whose user_id is
+    their own sub, so a session id alone no longer hands out another person's trail 
+    across organizations the caller does not belong to.
+    Arguments:
+      sessionId — the session to reconstruct; only this session's events are returned. */
+SessionJourney(sessionId STRING NOT NULL,
+    callerSub STRING NOT NULL METADATA FROM 'auth.sub',
+    callerGroupIds ARRAY<STRING> METADATA FROM 'auth.https://datasqrl.com/data_group_ids',
+    callerIsAdmin BOOLEAN METADATA FROM 'auth.https://datasqrl.com/global_admin') :=
+  SELECT `sequence`,
+         user_id AS userId,
+         org_name AS orgName,
+         session_id AS sessionId,
+         route_pattern AS routePattern,
+         path,
+         project_id AS projectId,
+         deployment_id AS deploymentId,
+         tab,
+         referrer_path AS referrerPath,
+         event_time AS eventTime,
+         CASE WHEN next_epoch IS NOT NULL AND next_epoch - event_epoch <= 1800
+              THEN CAST(next_epoch - event_epoch AS INTEGER)
+              ELSE CAST(NULL AS INTEGER) END AS dwellSeconds
+  FROM (
+    SELECT user_id, org_name, session_id, route_pattern, path, project_id, deployment_id, tab, referrer_path, event_time, event_epoch,
+           ROW_NUMBER() OVER (PARTITION BY session_id, run_id ORDER BY event_time) AS `sequence`,
+           LEAD(event_epoch) OVER (PARTITION BY session_id ORDER BY event_time) AS next_epoch
+    FROM (
+      SELECT user_id, org_name, route_pattern, path, project_id, deployment_id, tab, referrer_path, event_time, event_epoch, session_id,
+             SUM(gap_flag) OVER (PARTITION BY session_id ORDER BY event_time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS run_id
+      FROM (
+        SELECT user_id, org_name, route_pattern, path, project_id, deployment_id, tab, referrer_path, event_time, event_epoch, session_id,
+               CASE WHEN prev_epoch IS NULL OR event_epoch - prev_epoch > 1800 THEN 1 ELSE 0 END AS gap_flag
+        FROM (
+          SELECT user_id, org_name, route_pattern, path, project_id, deployment_id, tab, referrer_path, event_time, event_epoch, session_id,
+                 LAG(event_epoch) OVER (PARTITION BY session_id ORDER BY event_time) AS prev_epoch
+          FROM _PageViewClean
+          WHERE session_id = :sessionId
+            AND (COALESCE(CAST(:callerIsAdmin AS BOOLEAN), FALSE) = TRUE OR ARRAY_CONTAINS(CAST(:callerGroupIds AS ARRAY<STRING>), org_id) OR user_id = CAST(:callerSub AS STRING))
+        ) a
+      ) b
+    ) c
+  ) d
+  ORDER BY eventTime;
+
+/** The raw page-view trail of one user in a time window, ordered by event time,
+    oldest first. Unlike the aggregate functions this returns every event, so a
+    caller can follow one person page by page; the sessionId shows where one visit
+    ends and the next begins. Returns sessionId, routePattern, path, orgName,
+    projectId, deploymentId, tab, referrerPath and eventTime (orgName/projectId/deploymentId are
+    null off an org/project/deployment route). referrerPath is the previous in-app path
+    as the browser recorded it within the same tab, null on the first view of a visit;
+    it stays correct across interleaved tabs where reading the row above would not.
+    Scoped to the caller's own token (FR-auth): a global admin sees every row; everyone
+    else only sees rows whose org_id is one of their data_group_ids, or whose user_id is
+    their own sub. userId narrows a result the caller is already allowed to see — it can
+    no longer be used to read someone else's trail outside the caller's own organizations.
+    Arguments:
+      userId   — optional; the user (auth0 id) whose page views are returned. Omit it to
+                 get the caller's own trail (their sub claim) — this is what a caller asking
+                 about themselves should do, since they have no way of knowing their own id.
+      fromTime — optional inclusive start of the time window; omit for no lower bound
+                 (all retained history, 30 days). Half-open [fromTime, toTime) when given.
+      toTime   — optional exclusive end of the time window; omit for no upper bound. */
+UserTrail(userId STRING, fromTime TIMESTAMP, toTime TIMESTAMP,
+    callerSub STRING NOT NULL METADATA FROM 'auth.sub',
+    callerGroupIds ARRAY<STRING> METADATA FROM 'auth.https://datasqrl.com/data_group_ids',
+    callerIsAdmin BOOLEAN METADATA FROM 'auth.https://datasqrl.com/global_admin') :=
+  SELECT session_id AS sessionId,
+         route_pattern AS routePattern,
+         path,
+         org_name AS orgName,
+         project_id AS projectId,
+         deployment_id AS deploymentId,
+         tab,
+         referrer_path AS referrerPath,
+         event_time AS eventTime
+  FROM _PageViewClean
+  WHERE user_id = COALESCE(:userId, CAST(:callerSub AS STRING))
+    AND (COALESCE(CAST(:callerIsAdmin AS BOOLEAN), FALSE) = TRUE OR ARRAY_CONTAINS(CAST(:callerGroupIds AS ARRAY<STRING>), org_id) OR user_id = CAST(:callerSub AS STRING))
+    AND (CAST(:fromTime AS TIMESTAMP) IS NULL OR event_time >= CAST(:fromTime AS TIMESTAMP))
+    AND (CAST(:toTime AS TIMESTAMP) IS NULL OR event_time < CAST(:toTime AS TIMESTAMP))
+  ORDER BY eventTime;
+
+/** The raw page-view trail of a whole organization in a time window, ordered by
+    event time, oldest first: every event of every user of that org, with userId on
+    each row so it shows who moved where across the organization. Returns userId,
+    sessionId, routePattern, path, orgName, projectId, deploymentId, tab, referrerPath
+    and eventTime. referrerPath is the previous in-app path as the browser recorded it
+    within the same tab, null on the first view of a visit; it stays correct across
+    interleaved tabs where reading the row above would not.
+    Scoped to the caller's own token (FR-auth): a global admin sees every row; everyone
+    else only sees rows whose org_id is one of their data_group_ids, or whose user_id is
+    their own sub (so a caller always sees their own page views, including the ones made
+    outside any organization, where org_id is null). orgName narrows a result the caller
+    is already allowed to see — it can no longer be used to read an organization the
+    caller does not belong to.
+    Arguments:
+      orgName  — the organization slug (as it appears in the URL) whose users' page
+                 views are returned.
+      fromTime — optional inclusive start of the time window; omit for no lower bound
+                 (all retained history, 30 days). Half-open [fromTime, toTime) when given.
+      toTime   — optional exclusive end of the time window; omit for no upper bound. */
+OrgTrail(orgName STRING NOT NULL, fromTime TIMESTAMP, toTime TIMESTAMP,
+    callerSub STRING NOT NULL METADATA FROM 'auth.sub',
+    callerGroupIds ARRAY<STRING> METADATA FROM 'auth.https://datasqrl.com/data_group_ids',
+    callerIsAdmin BOOLEAN METADATA FROM 'auth.https://datasqrl.com/global_admin') :=
+  SELECT user_id AS userId,
+         session_id AS sessionId,
+         route_pattern AS routePattern,
+         path,
+         org_name AS orgName,
+         project_id AS projectId,
+         deployment_id AS deploymentId,
+         tab,
+         referrer_path AS referrerPath,
+         event_time AS eventTime
+  FROM _PageViewClean
+  WHERE org_name = :orgName
+    AND (COALESCE(CAST(:callerIsAdmin AS BOOLEAN), FALSE) = TRUE OR ARRAY_CONTAINS(CAST(:callerGroupIds AS ARRAY<STRING>), org_id) OR user_id = CAST(:callerSub AS STRING))
+    AND (CAST(:fromTime AS TIMESTAMP) IS NULL OR event_time >= CAST(:fromTime AS TIMESTAMP))
+    AND (CAST(:toTime AS TIMESTAMP) IS NULL OR event_time < CAST(:toTime AS TIMESTAMP))
+  ORDER BY eventTime;
+
+/** Active users per day in a window: dau is the distinct users that day, wau is
+    the distinct users over the trailing 7 days (exact distinct, not a sum).
+    Scoped to the caller's own token (FR-auth): a global admin sees every row; everyone
+    else only counts rows whose org_id is one of their data_group_ids, or whose user_id is
+    their own sub (so a caller's own page views outside any organization still count), so
+    each caller gets the dau/wau for their own organizations rather than the whole platform.
+    Arguments:
+      fromTime — optional inclusive start of the reported days; omit for no lower bound
+                 (all retained history, 30 days). Half-open [fromTime, toTime) when given;
+                 the trailing-7-day WAU still looks back before this bound.
+      toTime   — optional exclusive end of the reported days; omit for no upper bound. */
+ActiveUsers(fromTime TIMESTAMP, toTime TIMESTAMP,
+    callerSub STRING NOT NULL METADATA FROM 'auth.sub',
+    callerGroupIds ARRAY<STRING> METADATA FROM 'auth.https://datasqrl.com/data_group_ids',
+    callerIsAdmin BOOLEAN METADATA FROM 'auth.https://datasqrl.com/global_admin') :=
+  SELECT d.user_day AS `day`,
+         COUNT(DISTINCT CASE WHEN w.user_day = d.user_day THEN w.user_id END) AS dau,
+         COUNT(DISTINCT w.user_id) AS wau
+  FROM _DailyUser d
+  JOIN _DailyUser w ON w.user_day <= d.user_day AND w.user_day > d.user_day - INTERVAL '7' DAY
+  WHERE (COALESCE(CAST(:callerIsAdmin AS BOOLEAN), FALSE) = TRUE OR ARRAY_CONTAINS(CAST(:callerGroupIds AS ARRAY<STRING>), d.org_id) OR d.user_id = CAST(:callerSub AS STRING))
+    AND (COALESCE(CAST(:callerIsAdmin AS BOOLEAN), FALSE) = TRUE OR ARRAY_CONTAINS(CAST(:callerGroupIds AS ARRAY<STRING>), w.org_id) OR w.user_id = CAST(:callerSub AS STRING))
+    AND (CAST(:fromTime AS TIMESTAMP) IS NULL OR d.user_day >= CAST(:fromTime AS TIMESTAMP))
+    AND (CAST(:toTime AS TIMESTAMP) IS NULL OR d.user_day < CAST(:toTime AS TIMESTAMP))
+  GROUP BY d.user_day
+  ORDER BY `day`;
+
+/* ========================================
+   TEST CASES (table tests over the hidden pipeline base)
+   The parametrized API functions are exercised end-to-end by the GraphQL API
+   tests; these table tests pin the deterministic materialized facts they rest on.
+   ======================================== */
+
+/** FR-3: deduplication on event_id keeps one row per id. The fixture delivers
+    E1 twice (R1/R4), so total_events must equal distinct_events (17, not 18). */
+/*+test */
+PageViewDedupTest := SELECT COUNT(*) AS total_events, COUNT(DISTINCT event_id) AS distinct_events
+  FROM _PageViewClean
+  ORDER BY total_events, distinct_events;
+
+/** Feeds FR-10 DAU/WAU: the distinct (day, user) presence set. _DailyUser itself is now
+    grouped by (day, user, org) to carry org_id for ActiveUsers' caller scoping, so this
+    test collapses it back with DISTINCT to pin the same (day, user) pairs as before. */
+/*+test */
+DailyUserTest := SELECT DISTINCT user_day, user_id FROM _DailyUser ORDER BY user_day ASC, user_id ASC;

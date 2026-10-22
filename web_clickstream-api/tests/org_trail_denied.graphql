@@ -1,0 +1,21 @@
+# FR-auth, "asking for an organization they do not belong to": called with USER1's
+# own token (sub auth0|USER1, data_group_ids [ORG-ACME], not a global admin, see
+# org_trail_denied.properties). Contoso has real data (USER3's two page views) but
+# USER1 is neither a contoso member (ORG-CONTOSO is not in their data_group_ids)
+# nor the author of those rows (their sub does not match user_id), so the orgName
+# argument no longer reaches it: the result is empty, proving the filter actually
+# blocks access rather than the org simply having no data.
+query OrgTrailDeniedForOutsider {
+  OrgTrail(orgName: "contoso", limit: 100) {
+    userId
+    sessionId
+    routePattern
+    path
+    orgName
+    projectId
+    deploymentId
+    tab
+    referrerPath
+    eventTime
+  }
+}

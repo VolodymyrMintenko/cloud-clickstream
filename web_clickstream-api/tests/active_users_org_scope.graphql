@@ -1,0 +1,19 @@
+# FR-auth, "aggregate scoping": same window as active_users.graphql but called
+# with USER1's own token (sub auth0|USER1, data_group_ids [ORG-ACME], not a global
+# admin, see active_users_org_scope.properties) instead of the suite's default
+# admin token. USER1's visible rows are acme (USER1 + USER2) plus USER1's own
+# org-less SESS-7 view; ADMIN's globex-only activity is invisible to them. So
+# 2026-09-23 has dau 2 here (USER1, USER2) instead of the admin's dau 3 in
+# active_users.graphql, proving the count is computed over what the caller may
+# see rather than platform-wide. 2026-09-20 stays dau 1 (USER1 only, same as
+# admin) because that day has no globex activity to exclude.
+query ActiveUsersOrgScope {
+  ActiveUsers(
+    fromTime: "2026-09-20T00:00:00Z"
+    toTime: "2026-09-24T00:00:00Z"
+  ) {
+    day
+    dau
+    wau
+  }
+}

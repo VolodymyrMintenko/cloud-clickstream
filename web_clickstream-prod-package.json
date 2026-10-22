@@ -1,0 +1,35 @@
+{
+  "script": {
+    "config": {
+      "environment": "prod"
+    }
+  },
+  "engines": {
+    "flink": {
+      "config": {
+        "table.exec.source.idle-timeout": "10 s"
+      }
+    },
+    "vertx": {
+      "authKind": [
+        "JWT"
+      ],
+      "config": {
+        "jwtAuth": {
+          "pubSecKeys": [
+            {
+              "algorithm": "RS256",
+              "buffer": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF3ZW8zTWZWYTVKd1R0UTNLcnYvZwpyM0FYaVRHNUtxYTMvcTZ6YzZPS21EUXE4Vm1KK25FTG82eERsU25CdS9kNjJaWnhLTm9yeWE2YVo1cXVWOUdGCm1aQVBKUUlNQzVrMG1aNkdXbzYrOFI1L2hEdDZWUWxTanRuSGpnTFBBV01HVkRMR2dlY1BnRFl3dE51Q0VCK3EKZVhqYWtERkN6SHczSUVtR0FXMit2OWlleHR0NmdzYXZ3NWhGcXIvWGc2aFp6TFNoM2M2RVJjdUZrdjhHQkJXOQpuVjY5T2t1Z3F2MEI3VnVHbHVpZ0ZvNml5ZjVrWTZDZG5GSU9JQ2cyVWtVTXpzekFxNk56eU9iRStpQnd5c0RDCnVIVEtneFZXZXcyR0dOK0g3emtUcjJoRGltUmtGRFRnUm1iVGRSWTg4ZTZET25iOGFVdHUxVFJ3WlpNdTdhelIKbndJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0t"
+            }
+          ],
+          "jwtOptions": {
+            "issuer": "https://datasqrl.us.auth0.com/",
+            "audience": [
+              "https://dev.datasqrl.com"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

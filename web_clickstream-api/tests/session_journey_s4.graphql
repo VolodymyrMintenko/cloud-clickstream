@@ -1,0 +1,17 @@
+# FR-9: a single-event session returns exactly one row, sequence 1, null dwellSeconds.
+query SessionJourneyS4 {
+  SessionJourney(sessionId: "SESS-4") {
+    sequence
+    userId
+    orgName
+    sessionId
+    routePattern
+    path
+    projectId
+    deploymentId
+    tab
+    referrerPath
+    eventTime
+    dwellSeconds
+  }
+}

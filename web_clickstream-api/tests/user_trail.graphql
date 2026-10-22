@@ -1,0 +1,24 @@
+# Uses the suite's default token (a global admin, see web_clickstream-test-package.json),
+# so the auth filter is a no-op here and the plain userId filter is exercised as before.
+# USER1's page views across one day span three sessions (SESS-1, then SESS-3,
+# then SESS-7 which is off any org so orgName is null), ordered by event time.
+# E17 (2026-09-20) is before fromTime and excluded; E19 at 15:00 is inside the
+# window. The changing sessionId marks where one visit ends and the next begins.
+query UserTrailUser1 {
+  UserTrail(
+    userId: "auth0|USER1"
+    fromTime: "2026-09-23T00:00:00Z"
+    toTime: "2026-09-24T00:00:00Z"
+    limit: 100
+  ) {
+    sessionId
+    routePattern
+    path
+    orgName
+    projectId
+    deploymentId
+    tab
+    referrerPath
+    eventTime
+  }
+}

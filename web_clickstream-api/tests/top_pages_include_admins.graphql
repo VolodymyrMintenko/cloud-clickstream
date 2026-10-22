@@ -1,0 +1,14 @@
+# FR-7/FR-11 (includeAdmins: true): admin events are included, so the route
+# /[orgName]/[projectId]/~/logs shows the full viewCount 3 (R15, R16, R18).
+query TopPagesIncludeAdmins {
+  TopPages(
+    fromTime: "2026-09-01T00:00:00Z"
+    toTime: "2026-10-01T00:00:00Z"
+    includeAdmins: true
+  ) {
+    routePattern
+    viewCount
+    uniqueUsers
+    uniqueSessions
+  }
+}

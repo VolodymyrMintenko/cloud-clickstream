@@ -1,0 +1,65 @@
+{
+  "data" : {
+    "UserTrail" : [ {
+      "sessionId" : "SESS-1",
+      "routePattern" : "/[orgName]/[projectId]",
+      "path" : "/acme/PA",
+      "orgName" : "acme",
+      "projectId" : "PA",
+      "deploymentId" : null,
+      "tab" : null,
+      "referrerPath" : null,
+      "eventTime" : "2026-09-23T10:00:00.000Z"
+    }, {
+      "sessionId" : "SESS-1",
+      "routePattern" : "/[orgName]/[projectId]/~/deployments",
+      "path" : "/acme/PA/~/deployments",
+      "orgName" : "acme",
+      "projectId" : "PA",
+      "deploymentId" : null,
+      "tab" : null,
+      "referrerPath" : "/acme/PA",
+      "eventTime" : "2026-09-23T10:00:30.000Z"
+    }, {
+      "sessionId" : "SESS-1",
+      "routePattern" : "/[orgName]/[projectId]/[deploymentId]/~/logs",
+      "path" : "/acme/PA/DA/~/logs",
+      "orgName" : "acme",
+      "projectId" : "PA",
+      "deploymentId" : "DA",
+      "tab" : "logs",
+      "referrerPath" : "/acme/PA/~/deployments",
+      "eventTime" : "2026-09-23T10:01:30.000Z"
+    }, {
+      "sessionId" : "SESS-3",
+      "routePattern" : "/[orgName]/[projectId]/~/deployments",
+      "path" : "/acme/PD/~/deployments",
+      "orgName" : "acme",
+      "projectId" : "PD",
+      "deploymentId" : null,
+      "tab" : null,
+      "referrerPath" : null,
+      "eventTime" : "2026-09-23T12:00:00.000Z"
+    }, {
+      "sessionId" : "SESS-3",
+      "routePattern" : "/[orgName]/[projectId]/[deploymentId]/~/logs",
+      "path" : "/acme/PD/DD/~/logs",
+      "orgName" : "acme",
+      "projectId" : "PD",
+      "deploymentId" : "DD",
+      "tab" : "logs",
+      "referrerPath" : "/acme/PD/~/deployments",
+      "eventTime" : "2026-09-23T12:45:00.000Z"
+    }, {
+      "sessionId" : "SESS-7",
+      "routePattern" : "/docs",
+      "path" : "/docs",
+      "orgName" : null,
+      "projectId" : null,
+      "deploymentId" : null,
+      "tab" : null,
+      "referrerPath" : null,
+      "eventTime" : "2026-09-23T15:00:00.000Z"
+    } ]
+  }
+}

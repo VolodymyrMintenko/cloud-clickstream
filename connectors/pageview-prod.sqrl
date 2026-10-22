@@ -1,0 +1,15 @@
+-- Production ingestion: DataSQRL-managed Kafka topic exposed as the GraphQL
+-- `PageView` mutation (the single write path). The `engine(kafka)` hint makes
+-- DataSQRL create and manage the topic; `no_query` keeps the raw stream out of
+-- the query API (it is reached only through the mutation and downstream views).
+-- `event_time` is the Kafka record metadata timestamp (ingest time) — never a
+-- client-supplied clock (untrusted browser clocks). 60s watermark = the
+-- 60-second lateness tolerance. No partition key: per-session order is
+-- reconstructed by sorting on `event_time` in SQL, not by Kafka partitioning.
+IMPORT pageview.*;
+
+/*+no_query, engine(kafka) */
+CREATE TABLE PageView (
+    event_time TIMESTAMP_LTZ(3) NOT NULL METADATA FROM 'timestamp',
+    WATERMARK FOR event_time AS event_time - INTERVAL '60' SECOND
+) LIKE _PageView_schema;

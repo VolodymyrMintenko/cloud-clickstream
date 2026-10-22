@@ -1,0 +1,19 @@
+# FR-auth, "admin": called with the suite's default token, a global admin (sub
+# auth0|ADMIN, global_admin true). Requests contoso, an org the admin does not
+# belong to (its data_group_ids is empty) and gets every contoso row anyway,
+# because global_admin bypasses the org_id/sub check entirely: USER3's two
+# page views (SESS-8), ordered by event time.
+query OrgTrailAdminSeesContoso {
+  OrgTrail(orgName: "contoso", limit: 100) {
+    userId
+    sessionId
+    routePattern
+    path
+    orgName
+    projectId
+    deploymentId
+    tab
+    referrerPath
+    eventTime
+  }
+}

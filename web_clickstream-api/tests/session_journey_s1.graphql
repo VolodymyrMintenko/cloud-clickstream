@@ -1,0 +1,18 @@
+# FR-5: SESS-1 has three events at t, t+30s, t+90s -> sequence 1,2,3 and
+# dwellSeconds 30, 60, null.
+query SessionJourneyS1 {
+  SessionJourney(sessionId: "SESS-1") {
+    sequence
+    userId
+    orgName
+    sessionId
+    routePattern
+    path
+    projectId
+    deploymentId
+    tab
+    referrerPath
+    eventTime
+    dwellSeconds
+  }
+}

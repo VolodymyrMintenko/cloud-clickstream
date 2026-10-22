@@ -1,0 +1,11 @@
+{
+  "data" : {
+    "PageTransitions" : [ {
+      "toRoutePattern" : "/[orgName]/[projectId]/[deploymentId]/~/logs",
+      "transitionCount" : 1
+    }, {
+      "toRoutePattern" : "/[orgName]/[projectId]/~/analytics",
+      "transitionCount" : 1
+    } ]
+  }
+}

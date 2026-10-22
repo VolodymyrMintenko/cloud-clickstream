@@ -1,0 +1,4 @@
+build/
+.claude/
+.code_agent_results.json
+.DS_Store

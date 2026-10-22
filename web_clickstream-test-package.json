@@ -1,0 +1,37 @@
+{
+  "script": {
+    "config": {
+      "environment": "test"
+    }
+  },
+  "engines": {
+    "vertx": {
+      "authKind": ["JWT"],
+      "config": {
+        "jwtAuth": {
+          "pubSecKeys": [
+            {
+              "algorithm": "HS256",
+              "buffer": "ZHVtbXktc3VwZXItc2VjcmV0LWp3dC1zaWduaW5nLXN0cmluZw=="
+            }
+          ],
+          "jwtOptions": {
+            "issuer": "dummy-issuer",
+            "audience": ["dummy-audience"],
+            "expiresInSeconds": "3600",
+            "leeway": "60"
+          }
+        }
+      }
+    }
+  },
+  "test-runner": {
+    "delay-sec": -1,
+    "required-checkpoints": 1,
+    "snapshot-folder": "snapshots/web_clickstream/",
+    "test-folder": "web_clickstream-api/tests/",
+    "headers": {
+      "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJkdW1teS1pc3N1ZXIiLCJhdWQiOlsiZHVtbXktYXVkaWVuY2UiXSwiZXhwIjo5OTk5OTk5OTk5LCJzdWIiOiJhdXRoMHxBRE1JTiIsImh0dHBzOi8vZGF0YXNxcmwuY29tL2RhdGFfZ3JvdXBfaWRzIjpbXSwiaHR0cHM6Ly9kYXRhc3FybC5jb20vZ2xvYmFsX2FkbWluIjp0cnVlLCJpYXQiOjE3OTIxNjMwMjB9.E-9_Hbk12fCSg0TFMyQu7hrBrqd0cFxvpyjBlWlWz4A"
+    }
+  }
+}

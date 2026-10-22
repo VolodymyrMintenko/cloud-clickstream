@@ -1,0 +1,35 @@
+{
+  "script": {
+    "config": {
+      "environment": "prod"
+    }
+  },
+  "engines": {
+    "flink": {
+      "config": {
+        "table.exec.source.idle-timeout": "10 s"
+      }
+    },
+    "vertx": {
+      "authKind": [
+        "JWT"
+      ],
+      "config": {
+        "jwtAuth": {
+          "pubSecKeys": [
+            {
+              "algorithm": "RS256",
+              "buffer": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUFxeTJRMzhLb0hFUVluQjFiZGc2WQpnVTVRbWo2b3ZuNWkzSkdqYWtaM2k2bm1mUXVOcXJseTU1eGYzbnE0MnMyeW9Cb1RkSlMzUS9kRVhvRGxJdWhLClc0c1lXTzlUNUVKZGVuNFZWR3FsZmxBL2pYdEdBbGs3R09rMXVDcm5CLzhOSnRWSFNha281UjdwanMvWnhSdkMKcld1c2tYU2xUUW9TU3hSS2t2ak5ZNUdURmY3end6WHo2enZKelFvTVJrbm5RUWFablQ1U3IrSHp0ektuUFk0UQpsOVJjMlVlSkNhQTVKc1ExS1ZMb2l2RC85S25JRU4xL01LS3RaK1EvYVc2RW9IMnB6VGJNb25aUU5WbDh6NVpsCm02R1lGM1ZPT1VueXlkWlI3Z0VEM3VldW1PQ1c5elJnendOZVVhbElLTUE5b2tsVmQydnZEdVhpRStzZkhONWkKUlFJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0t"
+            }
+          ],
+          "jwtOptions": {
+            "issuer": "https://login.staging.datasqrl.com/",
+            "audience": [
+              "https://sqrl-repository-frontend-git-staging-datasqrl.vercel.app"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

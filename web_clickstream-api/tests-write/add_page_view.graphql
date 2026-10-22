@@ -1,0 +1,33 @@
+# FR-1 (write path, local/Kafka env): a valid PageView mutation is accepted and
+# the accepted event is returned so the caller can confirm receipt. Only the
+# non-metadata fields are selected — event_time is the Kafka ingest timestamp
+# (wall clock) and is not deterministic in a snapshot.
+mutation AddValidPageView {
+  PageView(event: {
+    event_id: "W1"
+    session_id: "WS1"
+    user_id: "auth0|WUSER"
+    is_global_admin: false
+    org_id: "ORG-WONKA"
+    org_name: "wonka"
+    route_pattern: "/[orgName]/[projectId]"
+    path: "/wonka/WP1"
+    project_id: "WP1"
+    deployment_id: null
+    tab: null
+    referrer_path: null
+  }) {
+    event_id
+    session_id
+    user_id
+    is_global_admin
+    org_id
+    org_name
+    route_pattern
+    path
+    project_id
+    deployment_id
+    tab
+    referrer_path
+  }
+}

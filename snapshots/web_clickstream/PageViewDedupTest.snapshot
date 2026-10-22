@@ -1,0 +1,8 @@
+{
+  "data" : {
+    "PageViewDedupTest" : [ {
+      "total_events" : 20,
+      "distinct_events" : 20
+    } ]
+  }
+}
